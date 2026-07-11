@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Employee Monitor — Dashboard</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg: #14171c;
+    --panel: #1c2027;
+    --panel-border: #2a2f38;
+    --text: #e8eaed;
+    --muted: #8b93a1;
+    --productive: #3ecf8e;
+    --neutral: #f0b84c;
+    --nonproductive: #e6604f;
+    --accent: #5b8def;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding:32px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  h1{
+    font-size:22px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:-0.3px;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+  }
+  .controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  select, button{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  button:hover{border-color:var(--accent);}
+  .status-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--productive);
+    display:inline-block;
+    margin-right:6px;
+    box-shadow:0 0 0 3px rgba(62,207,142,0.15);
+  }
+  .status-dot.offline{background:var(--muted); box-shadow:none;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:18px 20px;
+  }
+  .stat-label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin-bottom:8px;
+  }
+  .stat-value{
+    font-size:26px;
+    font-weight:700;
+  }
+  .stat-value.productive{color:var(--productive);}
+  .stat-value.neutral{color:var(--neutral);}
+  .stat-value.nonproductive{color:var(--nonproductive);}
+
+  .row{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap:16px;
+  }
+  .panel-title{
+    font-size:14px;
+    font-weight:600;
+    margin-bottom:16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel-title span.count{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:400;
+  }
+
+  .bar-wrap{
+    display:flex;
+    height:10px;
+    border-radius:6px;
+    overflow:hidden;
+    background:#0f1216;
+    margin-bottom:16px;
+  }
+  .bar-seg{height:100%;}
+  .legend{
+    display:flex;
+    gap:16px;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:20px;
+  }
+  .legend-item{display:flex;align-items:center;gap:6px;}
+  .legend-dot{width:8px;height:8px;border-radius:2px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    padding:8px 10px;
+    border-bottom:1px solid var(--panel-border);
+  }
+  td{
+    padding:10px;
+    border-bottom:1px solid #22262e;
+  }
+  tr:last-child td{border-bottom:none;}
+  .badge{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:600;
+  }
+  .badge.Productive{background:rgba(62,207,142,0.15); color:var(--productive);}
+  .badge.Neutral{background:rgba(240,184,76,0.15); color:var(--neutral);}
+  .badge.Non-Productive{background:rgba(230,96,79,0.15); color:var(--nonproductive);}
+
+  .timeline{
+    max-height:360px;
+    overflow-y:auto;
+    padding-right:4px;
+  }
+  .tl-item{
+    display:flex;
+    gap:12px;
+    padding:9px 0;
+    border-bottom:1px solid #22262e;
+    font-size:13px;
+  }
+  .tl-item:last-child{border-bottom:none;}
+  .tl-time{
+    color:var(--muted);
+    font-variant-numeric:tabular-nums;
+    min-width:74px;
+    font-size:12px;
+  }
+  .tl-dot{
+    width:6px;height:6px;border-radius:50%;
+    margin-top:6px;
+    flex-shrink:0;
+  }
+  .tl-dot.activity{background:var(--accent);}
+  .tl-dot.session{background:var(--productive);}
+  .tl-dot.idle{background:var(--muted);}
+  .tl-label{color:var(--text);}
+  .tl-meta{color:var(--muted); font-size:12px;}
+
+  .empty{
+    color:var(--muted);
+    font-size:13px;
+    padding:24px 0;
+    text-align:center;
+  }
+
+  .refresh-note{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:24px;
+    text-align:right;
+  }
+
+  #signinScreen{
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg);
+    z-index:100;
+  }
+  .signin-card{
+    text-align:center;
+    padding:40px;
+  }
+  .signin-card h2{
+    font-size:20px;
+    margin-bottom:8px;
+  }
+  .signin-card p{
+    color:var(--muted);
+    font-size:13px;
+    margin-bottom:24px;
+  }
+  .user-info{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .user-info img{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+  }
+  .user-info .user-name{
+    font-size:13px;
+    color:var(--text);
+  }
+  .signout-btn{
+    background:none;
+    border:1px solid var(--panel-border);
+    color:var(--muted);
+    padding:6px 12px;
+    border-radius:8px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .signout-btn:hover{color:var(--text); border-color:var(--accent);}
+
+  @media print{
+    body{background:white; color:black; padding:0;}
+    #signinScreen{display:none !important;}
+    .controls select, .controls button, .signout-btn{display:none !important;}
+    .card{border:1px solid #ccc; background:white;}
+    .refresh-note{display:none;}
+    .stat-label, .panel-title, th{color:#555 !important;}
+    .stat-value, .tl-label{color:black !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="signinScreen">
+  <div class="signin-card">
+    <h2>Employee Monitor</h2>
+    <p>Sign in with your company Google account to view the dashboard.</p>
+    <div id="googleSignInButton"></div>
+  </div>
+</div>
+
+<div id="dashboardContent" style="display:none;">
+
+<header>
+  <div>
+    <h1>Employee Monitor</h1>
+    <div class="sub"><span id="statusDot" class="status-dot"></span><span id="statusText">Connecting…</span></div>
+  </div>
+  <div class="controls">
+    <select id="employeeSelect"><option value="">Loading employees…</option></select>
+    <button id="refreshBtn">Refresh</button>
+    <button id="exportBtn">Export PDF</button>
+    <div class="user-info">
+      <img id="userAvatar" src="" alt="">
+      <span class="user-name" id="userName"></span>
+    </div>
+    <button class="signout-btn" id="signoutBtn">Sign out</button>
+  </div>
+</header>
+
+<div class="grid" id="adminSummaryGrid" style="grid-template-columns:repeat(6,1fr);">
+  <div class="card">
+    <div class="stat-label">Total Employees</div>
+    <div class="stat-value" id="totalEmployees">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Online Now</div>
+    <div class="stat-value productive" id="onlineEmployees">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Offline</div>
+    <div class="stat-value" id="offlineEmployees">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Avg Working Hrs</div>
+    <div class="stat-value" id="avgWorkingHours">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Idle %</div>
+    <div class="stat-value neutral" id="idlePercent">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Avg Productivity</div>
+    <div class="stat-value productive" id="avgProductivity">—</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="stat-label">Login Time</div>
+    <div class="stat-value" id="loginTime">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Logout Time</div>
+    <div class="stat-value" id="logoutTime">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Productive Events</div>
+    <div class="stat-value productive" id="productiveCount">0</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Non-Productive Events</div>
+    <div class="stat-value nonproductive" id="nonproductiveCount">0</div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <div class="panel-title">Top Applications Today <span class="count" id="appCount"></span></div>
+
+    <div class="bar-wrap" id="barWrap"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--productive)"></span>Productive</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--neutral)"></span>Neutral</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--nonproductive)"></span>Non-Productive</div>
+    </div>
+
+    <table>
+      <thead><tr><th>Application</th><th>Events</th><th>Category</th></tr></thead>
+      <tbody id="appTableBody"></tbody>
+    </table>
+    <div class="empty" id="appEmpty" style="display:none;">No application activity recorded yet — start the agent and switch between a few apps.</div>
+  </div>
+
+  <div class="card">
+    <div class="panel-title">Activity Timeline</div>
+    <div class="timeline" id="timeline"></div>
+    <div class="empty" id="timelineEmpty" style="display:none;">No timeline data yet.</div>
+  </div>
+</div>
+
+<div class="row" style="margin-top:16px;">
+  <div class="card">
+    <div class="panel-title">
+      <span>Trend <span class="count" id="weekRange"></span></span>
+      <span>
+        <button id="rangeWeekBtn" style="padding:4px 10px; font-size:11px;">Week</button>
+        <button id="rangeMonthBtn" style="padding:4px 10px; font-size:11px;">Month</button>
+      </span>
+    </div>
+    <div class="bar-wrap" id="weekBarWrap"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--productive)"></span>Productive</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--neutral)"></span>Neutral</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--nonproductive)"></span>Non-Productive</div>
+    </div>
+    <table>
+      <thead><tr><th>Application</th><th>Events</th><th>Category</th></tr></thead>
+      <tbody id="weekTableBody"></tbody>
+    </table>
+    <div class="empty" id="weekEmpty" style="display:none;">No activity recorded in the last 7 days yet.</div>
+  </div>
+
+  <div class="card">
+    <div class="panel-title">Recent Screenshots <span class="count" id="screenshotCount"></span></div>
+    <div id="screenshotGrid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+    <div class="empty" id="screenshotEmpty" style="display:none;">No screenshots captured yet.</div>
+  </div>
+</div>
+
+<div class="refresh-note">Auto-refreshes every 10 seconds · API: http://localhost:4000</div>
+
+</div><!-- /dashboardContent -->
+
+<script>
+const API_URL = "http://localhost:4000";
+let currentRange = 'week';
+
+function fmtTime(iso){
+  if(!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+async function loadDashboard(){
+  const empId = document.getElementById('employeeSelect').value;
+
+  try {
+    const rangeEndpoint = currentRange === 'month' ? 'monthly' : 'weekly';
+    const [reportRes, timelineRes, rangeRes, screenshotsRes] = await Promise.all([
+      fetch(`${API_URL}/reports/daily/${empId}`),
+      fetch(`${API_URL}/employee/${empId}/timeline`),
+      fetch(`${API_URL}/reports/${rangeEndpoint}/${empId}`),
+      fetch(`${API_URL}/screenshots/${empId}`)
+    ]);
+
+    if(!reportRes.ok || !timelineRes.ok) throw new Error("API error");
+
+    const report = await reportRes.json();
+    const timeline = await timelineRes.json();
+    const weekly = rangeRes.ok ? await rangeRes.json() : null;
+    const screenshots = screenshotsRes.ok ? await screenshotsRes.json() : [];
+
+    document.getElementById('statusDot').classList.remove('offline');
+    document.getElementById('statusText').textContent = "Connected to server";
+
+    // Stat cards
+    document.getElementById('loginTime').textContent = fmtTime(report.login_time);
+    document.getElementById('logoutTime').textContent = fmtTime(report.logout_time);
+
+    const apps = report.top_applications || [];
+    const productive = apps.filter(a => a.category === 'Productive').reduce((s,a)=>s+a.events,0);
+    const nonproductive = apps.filter(a => a.category === 'Non-Productive').reduce((s,a)=>s+a.events,0);
+    document.getElementById('productiveCount').textContent = productive;
+    document.getElementById('nonproductiveCount').textContent = nonproductive;
+    document.getElementById('appCount').textContent = apps.length ? `${apps.length} apps` : '';
+
+    // Bar chart (proportion of events by category)
+    const totalEvents = apps.reduce((s,a)=>s+a.events,0) || 1;
+    const catColors = {'Productive':'var(--productive)','Neutral':'var(--neutral)','Non-Productive':'var(--nonproductive)'};
+    const barWrap = document.getElementById('barWrap');
+    barWrap.innerHTML = '';
+    apps.forEach(a=>{
+      const seg = document.createElement('div');
+      seg.className = 'bar-seg';
+      seg.style.width = ((a.events/totalEvents)*100) + '%';
+      seg.style.background = catColors[a.category] || 'var(--muted)';
+      barWrap.appendChild(seg);
+    });
+
+    // App table
+    const tbody = document.getElementById('appTableBody');
+    tbody.innerHTML = '';
+    document.getElementById('appEmpty').style.display = apps.length ? 'none' : 'block';
+    apps.forEach(a=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${a.app_name}</td><td>${a.events}</td><td><span class="badge ${a.category}">${a.category}</span></td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Timeline
+    const items = [];
+    (timeline.sessions||[]).forEach(s=>{
+      items.push({time:s.login_time, type:'session', label:'Logged in'});
+      if(s.logout_time) items.push({time:s.logout_time, type:'session', label:'Logged out'});
+    });
+    (timeline.activity||[]).forEach(a=>{
+      items.push({time:a.timestamp, type:'activity', label:a.label});
+    });
+    (timeline.idle||[]).forEach(i=>{
+      items.push({time:i.start_time, type:'idle', label:'Went idle'});
+      if(i.end_time) items.push({time:i.end_time, type:'idle', label:'Idle ended'});
+    });
+    (timeline.website||[]).forEach(w=>{
+      items.push({time:w.timestamp, type:'activity', label:`🌐 ${w.domain}`});
+    });
+    items.sort((a,b)=> new Date(b.time) - new Date(a.time));
+
+    const tlEl = document.getElementById('timeline');
+    tlEl.innerHTML = '';
+    document.getElementById('timelineEmpty').style.display = items.length ? 'none' : 'block';
+    items.slice(0,50).forEach(it=>{
+      const div = document.createElement('div');
+      div.className = 'tl-item';
+      div.innerHTML = `
+        <div class="tl-time">${fmtTime(it.time)}</div>
+        <div class="tl-dot ${it.type}"></div>
+        <div><div class="tl-label">${it.label}</div></div>
+      `;
+      tlEl.appendChild(div);
+    });
+
+    // Weekly/Monthly summary panel
+    if(weekly){
+      document.getElementById('weekRange').textContent = currentRange === 'month' ? 'Last 30 days' : 'Last 7 days';
+      const wApps = weekly.top_applications || [];
+      const wTotal = wApps.reduce((s,a)=>s+a.events,0) || 1;
+      const weekBar = document.getElementById('weekBarWrap');
+      weekBar.innerHTML = '';
+      wApps.forEach(a=>{
+        const seg = document.createElement('div');
+        seg.className = 'bar-seg';
+        seg.style.width = ((a.events/wTotal)*100) + '%';
+        seg.style.background = catColors[a.category] || 'var(--muted)';
+        weekBar.appendChild(seg);
+      });
+      const wBody = document.getElementById('weekTableBody');
+      wBody.innerHTML = '';
+      document.getElementById('weekEmpty').style.display = wApps.length ? 'none' : 'block';
+      wApps.forEach(a=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${a.app_name}</td><td>${a.events}</td><td><span class="badge ${a.category}">${a.category}</span></td>`;
+        wBody.appendChild(tr);
+      });
+    }
+
+    // Screenshots panel
+    document.getElementById('screenshotCount').textContent = screenshots.length ? `${screenshots.length} recent` : '';
+    const grid = document.getElementById('screenshotGrid');
+    grid.innerHTML = '';
+    document.getElementById('screenshotEmpty').style.display = screenshots.length ? 'none' : 'block';
+    screenshots.forEach(s=>{
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'border-radius:8px; overflow:hidden; border:1px solid var(--panel-border); position:relative;';
+      wrap.innerHTML = `
+        <img src="${API_URL}/uploads/${s.file_path}" style="width:100%; height:70px; object-fit:cover; display:block;" />
+        <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.6); font-size:10px; color:var(--muted); padding:3px 6px;">${fmtTime(s.timestamp)}</div>
+      `;
+      grid.appendChild(wrap);
+    });
+
+  } catch(err){
+    document.getElementById('statusDot').classList.add('offline');
+    document.getElementById('statusText').textContent = "Can't reach server — is node server.js running?";
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+document.getElementById('exportBtn').addEventListener('click', () => window.print());
+
+async function loadAdminSummary(){
+  try {
+    const res = await fetch(`${API_URL}/reports/admin-summary`);
+    const s = await res.json();
+    document.getElementById('totalEmployees').textContent = s.total_employees;
+    document.getElementById('onlineEmployees').textContent = s.online_employees;
+    document.getElementById('offlineEmployees').textContent = s.offline_employees;
+    document.getElementById('avgWorkingHours').textContent = s.avg_working_hours + 'h';
+    document.getElementById('idlePercent').textContent = s.idle_percentage + '%';
+    document.getElementById('avgProductivity').textContent = s.avg_productivity_percent + '%';
+  } catch(err){
+    // admin summary is supplementary; fail silently if it can't load
+  }
+}
+document.getElementById('employeeSelect').addEventListener('change', loadDashboard);
+document.getElementById('rangeWeekBtn').addEventListener('click', () => { currentRange = 'week'; loadDashboard(); });
+document.getElementById('rangeMonthBtn').addEventListener('click', () => { currentRange = 'month'; loadDashboard(); });
+
+// =========================================================
+// Google Sign-In
+// =========================================================
+const GOOGLE_CLIENT_ID = "151555767657-c2n871hvsdq9t2b07uofnfa8s7fg1qkq.apps.googleusercontent.com";
+let refreshTimer = null;
+
+function decodeJwt(token){
+  const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+  const json = decodeURIComponent(
+    atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+  );
+  return JSON.parse(json);
+}
+
+function handleCredentialResponse(response){
+  const payload = decodeJwt(response.credential);
+  const user = { name: payload.name, email: payload.email, picture: payload.picture };
+  localStorage.setItem('em_user', JSON.stringify(user));
+  showDashboard(user);
+}
+
+async function loadEmployeeList(){
+  const select = document.getElementById('employeeSelect');
+  try {
+    const res = await fetch(`${API_URL}/employees`);
+    const employees = await res.json();
+    select.innerHTML = '';
+    employees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.id;
+      opt.textContent = emp.name;
+      select.appendChild(opt);
+    });
+    if(employees.length === 0){
+      select.innerHTML = '<option value="1">Employee #1</option>';
+    }
+  } catch(err){
+    select.innerHTML = '<option value="1">Employee #1</option>';
+  }
+}
+
+function showDashboard(user){
+  document.getElementById('signinScreen').style.display = 'none';
+  document.getElementById('dashboardContent').style.display = 'block';
+  document.getElementById('userName').textContent = user.name;
+  document.getElementById('userAvatar').src = user.picture;
+  loadEmployeeList().then(loadDashboard);
+  loadAdminSummary();
+  if(!refreshTimer) refreshTimer = setInterval(() => { loadDashboard(); loadAdminSummary(); }, 10000);
+}
+
+function signOut(){
+  localStorage.removeItem('em_user');
+  if(refreshTimer){ clearInterval(refreshTimer); refreshTimer = null; }
+  location.reload();
+}
+
+document.getElementById('signoutBtn').addEventListener('click', signOut);
+
+window.addEventListener('load', () => {
+  if(typeof google !== 'undefined'){
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('googleSignInButton'),
+      { theme: 'filled_black', size: 'large', shape: 'pill' }
+    );
+  }
+
+  const saved = localStorage.getItem('em_user');
+  if(saved){
+    showDashboard(JSON.parse(saved));
+  } else {
+    document.getElementById('signinScreen').style.display = 'flex';
+  }
+});
+</script>
+
+</body>
+</html>

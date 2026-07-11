@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Employee Monitor — Dashboard</title>
+<style>
+  :root{
+    --bg: #14171c;
+    --panel: #1c2027;
+    --panel-border: #2a2f38;
+    --text: #e8eaed;
+    --muted: #8b93a1;
+    --productive: #3ecf8e;
+    --neutral: #f0b84c;
+    --nonproductive: #e6604f;
+    --accent: #5b8def;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding:32px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  h1{
+    font-size:22px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:-0.3px;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+  }
+  .controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  select, button{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  button:hover{border-color:var(--accent);}
+  .status-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--productive);
+    display:inline-block;
+    margin-right:6px;
+    box-shadow:0 0 0 3px rgba(62,207,142,0.15);
+  }
+  .status-dot.offline{background:var(--muted); box-shadow:none;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:12px;
+    padding:18px 20px;
+  }
+  .stat-label{
+    font-size:12px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin-bottom:8px;
+  }
+  .stat-value{
+    font-size:26px;
+    font-weight:700;
+  }
+  .stat-value.productive{color:var(--productive);}
+  .stat-value.neutral{color:var(--neutral);}
+  .stat-value.nonproductive{color:var(--nonproductive);}
+
+  .row{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap:16px;
+  }
+  .panel-title{
+    font-size:14px;
+    font-weight:600;
+    margin-bottom:16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .panel-title span.count{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:400;
+  }
+
+  .bar-wrap{
+    display:flex;
+    height:10px;
+    border-radius:6px;
+    overflow:hidden;
+    background:#0f1216;
+    margin-bottom:16px;
+  }
+  .bar-seg{height:100%;}
+  .legend{
+    display:flex;
+    gap:16px;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:20px;
+  }
+  .legend-item{display:flex;align-items:center;gap:6px;}
+  .legend-dot{width:8px;height:8px;border-radius:2px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.4px;
+    padding:8px 10px;
+    border-bottom:1px solid var(--panel-border);
+  }
+  td{
+    padding:10px;
+    border-bottom:1px solid #22262e;
+  }
+  tr:last-child td{border-bottom:none;}
+  .badge{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:11px;
+    font-weight:600;
+  }
+  .badge.Productive{background:rgba(62,207,142,0.15); color:var(--productive);}
+  .badge.Neutral{background:rgba(240,184,76,0.15); color:var(--neutral);}
+  .badge.Non-Productive{background:rgba(230,96,79,0.15); color:var(--nonproductive);}
+
+  .timeline{
+    max-height:360px;
+    overflow-y:auto;
+    padding-right:4px;
+  }
+  .tl-item{
+    display:flex;
+    gap:12px;
+    padding:9px 0;
+    border-bottom:1px solid #22262e;
+    font-size:13px;
+  }
+  .tl-item:last-child{border-bottom:none;}
+  .tl-time{
+    color:var(--muted);
+    font-variant-numeric:tabular-nums;
+    min-width:74px;
+    font-size:12px;
+  }
+  .tl-dot{
+    width:6px;height:6px;border-radius:50%;
+    margin-top:6px;
+    flex-shrink:0;
+  }
+  .tl-dot.activity{background:var(--accent);}
+  .tl-dot.session{background:var(--productive);}
+  .tl-dot.idle{background:var(--muted);}
+  .tl-label{color:var(--text);}
+  .tl-meta{color:var(--muted); font-size:12px;}
+
+  .empty{
+    color:var(--muted);
+    font-size:13px;
+    padding:24px 0;
+    text-align:center;
+  }
+
+  .refresh-note{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:24px;
+    text-align:right;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Employee Monitor</h1>
+    <div class="sub"><span id="statusDot" class="status-dot"></span><span id="statusText">Connecting…</span></div>
+  </div>
+  <div class="controls">
+    <select id="employeeSelect"><option value="1">Employee #1</option></select>
+    <button id="refreshBtn">Refresh</button>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <div class="stat-label">Login Time</div>
+    <div class="stat-value" id="loginTime">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Logout Time</div>
+    <div class="stat-value" id="logoutTime">—</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Productive Events</div>
+    <div class="stat-value productive" id="productiveCount">0</div>
+  </div>
+  <div class="card">
+    <div class="stat-label">Non-Productive Events</div>
+    <div class="stat-value nonproductive" id="nonproductiveCount">0</div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <div class="panel-title">Top Applications Today <span class="count" id="appCount"></span></div>
+
+    <div class="bar-wrap" id="barWrap"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--productive)"></span>Productive</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--neutral)"></span>Neutral</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--nonproductive)"></span>Non-Productive</div>
+    </div>
+
+    <table>
+      <thead><tr><th>Application</th><th>Events</th><th>Category</th></tr></thead>
+      <tbody id="appTableBody"></tbody>
+    </table>
+    <div class="empty" id="appEmpty" style="display:none;">No application activity recorded yet — start the agent and switch between a few apps.</div>
+  </div>
+
+  <div class="card">
+    <div class="panel-title">Activity Timeline</div>
+    <div class="timeline" id="timeline"></div>
+    <div class="empty" id="timelineEmpty" style="display:none;">No timeline data yet.</div>
+  </div>
+</div>
+
+<div class="refresh-note">Auto-refreshes every 10 seconds · API: http://localhost:4000</div>
+
+<script>
+const API_URL = "http://localhost:4000";
+
+function fmtTime(iso){
+  if(!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+async function loadDashboard(){
+  const empId = document.getElementById('employeeSelect').value;
+
+  try {
+    const [reportRes, timelineRes] = await Promise.all([
+      fetch(`${API_URL}/reports/daily/${empId}`),
+      fetch(`${API_URL}/employee/${empId}/timeline`)
+    ]);
+
+    if(!reportRes.ok || !timelineRes.ok) throw new Error("API error");
+
+    const report = await reportRes.json();
+    const timeline = await timelineRes.json();
+
+    document.getElementById('statusDot').classList.remove('offline');
+    document.getElementById('statusText').textContent = "Connected to server";
+
+    // Stat cards
+    document.getElementById('loginTime').textContent = fmtTime(report.login_time);
+    document.getElementById('logoutTime').textContent = fmtTime(report.logout_time);
+
+    const apps = report.top_applications || [];
+    const productive = apps.filter(a => a.category === 'Productive').reduce((s,a)=>s+a.events,0);
+    const nonproductive = apps.filter(a => a.category === 'Non-Productive').reduce((s,a)=>s+a.events,0);
+    document.getElementById('productiveCount').textContent = productive;
+    document.getElementById('nonproductiveCount').textContent = nonproductive;
+    document.getElementById('appCount').textContent = apps.length ? `${apps.length} apps` : '';
+
+    // Bar chart (proportion of events by category)
+    const totalEvents = apps.reduce((s,a)=>s+a.events,0) || 1;
+    const catColors = {'Productive':'var(--productive)','Neutral':'var(--neutral)','Non-Productive':'var(--nonproductive)'};
+    const barWrap = document.getElementById('barWrap');
+    barWrap.innerHTML = '';
+    apps.forEach(a=>{
+      const seg = document.createElement('div');
+      seg.className = 'bar-seg';
+      seg.style.width = ((a.events/totalEvents)*100) + '%';
+      seg.style.background = catColors[a.category] || 'var(--muted)';
+      barWrap.appendChild(seg);
+    });
+
+    // App table
+    const tbody = document.getElementById('appTableBody');
+    tbody.innerHTML = '';
+    document.getElementById('appEmpty').style.display = apps.length ? 'none' : 'block';
+    apps.forEach(a=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${a.app_name}</td><td>${a.events}</td><td><span class="badge ${a.category}">${a.category}</span></td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Timeline
+    const items = [];
+    (timeline.sessions||[]).forEach(s=>{
+      items.push({time:s.login_time, type:'session', label:'Logged in'});
+      if(s.logout_time) items.push({time:s.logout_time, type:'session', label:'Logged out'});
+    });
+    (timeline.activity||[]).forEach(a=>{
+      items.push({time:a.timestamp, type:'activity', label:a.label});
+    });
+    (timeline.idle||[]).forEach(i=>{
+      items.push({time:i.start_time, type:'idle', label:'Went idle'});
+      if(i.end_time) items.push({time:i.end_time, type:'idle', label:'Idle ended'});
+    });
+    items.sort((a,b)=> new Date(b.time) - new Date(a.time));
+
+    const tlEl = document.getElementById('timeline');
+    tlEl.innerHTML = '';
+    document.getElementById('timelineEmpty').style.display = items.length ? 'none' : 'block';
+    items.slice(0,50).forEach(it=>{
+      const div = document.createElement('div');
+      div.className = 'tl-item';
+      div.innerHTML = `
+        <div class="tl-time">${fmtTime(it.time)}</div>
+        <div class="tl-dot ${it.type}"></div>
+        <div><div class="tl-label">${it.label}</div></div>
+      `;
+      tlEl.appendChild(div);
+    });
+
+  } catch(err){
+    document.getElementById('statusDot').classList.add('offline');
+    document.getElementById('statusText').textContent = "Can't reach server — is node server.js running?";
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+document.getElementById('employeeSelect').addEventListener('change', loadDashboard);
+
+loadDashboard();
+setInterval(loadDashboard, 10000);
+</script>
+
+</body>
+</html>
